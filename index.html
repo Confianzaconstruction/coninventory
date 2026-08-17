@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Materials Inventory System</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background-color: #1e293b; color: #f8fafc; display: flex; flex-direction: column; justify-content: space-between; padding: 20px 0; flex-shrink: 0; }
+        .brand { padding: 0 20px 20px 20px; font-size: 18px; font-weight: bold; color: #38bdf8; border-bottom: 1px solid #334155; }
+        .menu { list-style: none; margin-top: 20px; }
+        .menu li a { display: flex; align-items: center; gap: 12px; padding: 14px 20px; color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+        .menu li.active a, .menu li a:hover { background-color: #0f172a; color: #38bdf8; border-left: 4px solid #38bdf8; }
+        .logout-section { border-top: 1px solid #334155; padding-top: 10px; }
+        .logout-section a { display: flex; align-items: center; gap: 12px; padding: 14px 20px; color: #f87171; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        .header { margin-bottom: 25px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; }
+        .header h1 { font-size: 24px; color: #0f172a; }
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+        .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+        .card { background: #ffffff; padding: 22px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-title { font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; }
+        .card-value { font-size: 26px; font-weight: bold; color: #0f172a; margin-top: 8px; }
+        .dashboard-tables-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .section-block { background: #ffffff; padding: 22px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .section-title { font-size: 16px; font-weight: bold; color: #0f172a; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background-color: #f8fafc; color: #475569; font-size: 11px; padding: 10px; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 10px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .badge-normal { background-color: #dcfce7; color: #166534; }
+        .badge-low { background-color: #fef9c3; color: #854d0e; }
+        .badge-critical { background-color: #fee2e2; color: #991b1b; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+        .form-group label { font-size: 12px; font-weight: 600; color: #475569; }
+        .form-control { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; width: 100%; }
+        .btn { background-color: #0284c7; color: white; padding: 10px 18px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-danger { background-color: #dc2626; }
+        
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; margin-right: 5px; }
+        .btn-edit { background-color: #f59e0b; color: white; }
+        .btn-delete { background-color: #ef4444; color: white; }
+
+        .text-green { color: #16a34a; font-weight: 600; }
+        .text-red { color: #dc2626; font-weight: 600; }
+
+        @media print {
+            .sidebar, .btn { display: none !important; }
+            .main-content { padding: 0; }
+            .page-section { display: none !important; }
+            #report { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div>
+            <div class="brand">🏗️ CONSTRUCT-INV</div>
+            <ul class="menu">
+                <li class="active" onclick="showSection('dashboard', this)"><a>📊 DASHBOARD</a></li>
+                <li onclick="showSection('add-materials', this)"><a>➕ ADD MATERIALS</a></li>
+                <li onclick="showSection('stock-in-out', this)"><a>🔄 STOCK IN & STOCK OUT</a></li>
+                <li onclick="showSection('settings', this)"><a>⚙️ SETTINGS</a></li>
+                <li onclick="showSection('report', this)"><a>📈 REPORT</a></li>
+            </ul>
+        </div>
+        <div class="logout-section">
+            <a onclick="alert('Logging out system...')">🚪 LOG OUT</a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1 id="page-header-title">Construction Materials Inventory Management</h1>
+        </div>
+
+        <!-- 1. DASHBOARD PAGE -->
+        <div id="dashboard" class="page-section active">
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-title">TOTAL MATERIALS</div>
+                    <div class="card-value" id="total-materials-card">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">LOW STOCKS</div>
+                    <div class="card-value" id="low-stocks-card" style="color: #d97706;">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">OUT OF STOCKS</div>
+                    <div class="card-value" id="out-stocks-card" style="color: #dc2626;">0</div>
+                </div>
+            </div>
+
+            <div class="dashboard-tables-grid">
+                <div class="section-block">
+                    <div class="section-title">📥 Recently Added Materials / Stocks</div>
+                    <table>
+                        <thead>
+                            <tr><th>Material Name</th><th>Category</th><th>Qty Added</th><th>Date Added</th></tr>
+                        </thead>
+                        <tbody id="dash-stock-in-list"></tbody>
+                    </table>
+                </div>
+
+                <div class="section-block">
+                    <div class="section-title">📤 Daily Released Stocks (Stock Out)</div>
+                    <table>
+                        <thead>
+                            <tr><th>Material Name</th><th>Released Qty</th><th>Project Site</th><th>Time / Date</th></tr>
+                        </thead>
+                        <tbody id="dash-stock-out-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. ADD MATERIALS PAGE -->
+        <div id="add-materials" class="page-section">
+            <div class="section-block">
+                <div class="section-title">➕ Add New Construction Material</div>
+                <form id="add-material-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Material Name</label>
+                            <input type="text" id="mat-name" class="form-control" placeholder="e.g. Switch 2 Gang White" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="mat-category" class="form-control">
+                                <option>Electrical</option>
+                                <option>Structural</option>
+                                <option>Plumbing</option>
+                                <option>Finishing</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Unit of Measure (UOM)</label>
+                            <input type="text" id="mat-uom" class="form-control" placeholder="e.g. Box, pcs, bags" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Stock Alert Level</label>
+                            <input type="number" id="mat-alert" class="form-control" placeholder="e.g. 5" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">Save New Material</button>
+                </form>
+            </div>
+
+            <div class="section-block">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div class="section-title" style="margin-bottom: 0;">📋 Registered Materials List</div>
+                    <button class="btn btn-danger" style="margin-top: 0; padding: 6px 12px; font-size: 12px;" onclick="clearAllData()">🧹 Reset System Data</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Material Name</th>
+                            <th>Category</th>
+                            <th>Unit (UOM)</th>
+                            <th>Min Alert Level</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="add-materials-master-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. STOCK IN AND STOCK OUT PAGE -->
+        <div id="stock-in-out" class="page-section">
+            <div class="section-block">
+                <div class="section-title">🔄 Stock In & Stock Out Transactions</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    
+                    <!-- Searchable Stock In -->
+                    <div style="border-right: 1px solid #e2e8f0; padding-right: 20px;">
+                        <h4 style="color: #0284c7; margin-bottom: 12px;">📥 Stock In (Receive Delivery)</h4>
+                        <form id="stock-in-form">
+                            <div class="form-group">
+                                <label>Search Material Name</label>
+                                <input type="text" id="stock-in-search" list="materials-list-in" class="form-control" placeholder="🔍 Type to search material..." required autocomplete="off">
+                                <datalist id="materials-list-in"></datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantity Received</label>
+                                <input type="number" id="stock-in-qty" class="form-control" min="1" placeholder="0" required>
+                            </div>
+                            <button type="submit" class="btn">Record Stock In</button>
+                        </form>
+                    </div>
+
+                    <!-- Searchable Stock Out -->
+                    <div>
+                        <h4 style="color: #dc2626; margin-bottom: 12px;">📤 Stock Out (Issue to Site)</h4>
+                        <form id="stock-out-form">
+                            <div class="form-group">
+                                <label>Search Material Name</label>
+                                <input type="text" id="stock-out-search" list="materials-list-out" class="form-control" placeholder="🔍 Type to search material..." required autocomplete="off">
+                                <datalist id="materials-list-out"></datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantity Issued</label>
+                                <input type="number" id="stock-out-qty" class="form-control" min="1" placeholder="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Project Site / Location</label>
+                                <input type="text" id="stock-out-site" class="form-control" placeholder="e.g. Site A Block 2" required>
+                            </div>
+                            <button type="submit" class="btn btn-danger">Record Stock Out</button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. SETTINGS PAGE -->
+        <div id="settings" class="page-section">
+            <div class="section-block">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <div class="section-title" style="margin-bottom: 0;">⚙️ Settings - Stock Alert & Threshold Monitoring</div>
+                    <div style="width: 250px;">
+                        <input type="text" id="settings-search" class="form-control" placeholder="🔍 Search settings..." onkeyup="filterSettingsTable()">
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Material Description</th>
+                            <th>Category</th>
+                            <th>Current Stock</th>
+                            <th>Min. Threshold Alert</th>
+                            <th>Status Alert</th>
+                        </tr>
+                    </thead>
+                    <tbody id="settings-inventory-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. REPORT PAGE -->
+        <div id="report" class="page-section">
+            <div class="section-block">
+                <div class="section-title">📈 Daily Inventory Summary Report</div>
+                <button class="btn" onclick="window.print()">🖨️ Print Report</button>
+                <div style="margin-top: 20px;">
+                    <h4 style="margin-bottom: 10px;">Full Inventory Status</h4>
+                    <table>
+                        <thead>
+                            <tr><th>Material Name</th><th>Category</th><th>Current Stock</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="report-inventory-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Initialize empty or read existing storage
+        let materials = JSON.parse(localStorage.getItem('materials_data')) || [];
+        let stockInLogs = JSON.parse(localStorage.getItem('stock_in_logs')) || [];
+        let stockOutLogs = JSON.parse(localStorage.getItem('stock_out_logs')) || [];
+
+        function saveData() {
+            localStorage.setItem('materials_data', JSON.stringify(materials));
+            localStorage.setItem('stock_in_logs', JSON.stringify(stockInLogs));
+            localStorage.setItem('stock_out_logs', JSON.stringify(stockOutLogs));
+        }
+
+        function showSection(sectionId, element) {
+            document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            document.querySelectorAll('.menu li').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function updateAllViews() {
+            saveData();
+
+            // Update Datalists
+            let inDatalist = document.getElementById('materials-list-in');
+            let outDatalist = document.getElementById('materials-list-out');
+            inDatalist.innerHTML = '';
+            outDatalist.innerHTML = '';
+
+            let lowCount = 0;
+            let outCount = 0;
+
+            materials.forEach((m) => {
+                let optionText = `${m.name} [Available: ${m.currentQty} ${m.uom}]`;
+                inDatalist.innerHTML += `<option value="${m.name}">${optionText}</option>`;
+                outDatalist.innerHTML += `<option value="${m.name}">${optionText}</option>`;
+
+                if (m.currentQty === 0) outCount++;
+                else if (m.currentQty <= m.minAlert) lowCount++;
+            });
+
+            // Update Cards
+            document.getElementById('total-materials-card').innerText = materials.length;
+            document.getElementById('low-stocks-card').innerText = lowCount;
+            document.getElementById('out-stocks-card').innerText = outCount;
+
+            // Update Master List in Add Materials Page
+            let addMasterTable = document.getElementById('add-materials-master-list');
+            addMasterTable.innerHTML = '';
+            materials.forEach((m, index) => {
+                addMasterTable.innerHTML += `<tr>
+                    <td><b>${m.name}</b></td>
+                    <td>${m.category}</td>
+                    <td>${m.uom}</td>
+                    <td>${m.minAlert} ${m.uom}</td>
+                    <td>
+                        <button class="btn-sm btn-edit" onclick="editMaterial(${index})">✏️ Edit</button>
+                        <button class="btn-sm btn-delete" onclick="deleteMaterial(${index})">🗑️ Delete</button>
+                    </td>
+                </tr>`;
+            });
+
+            // Update Dashboard Stock-In Logs
+            let dashInTable = document.getElementById('dash-stock-in-list');
+            dashInTable.innerHTML = '';
+            stockInLogs.slice(-5).reverse().forEach(log => {
+                dashInTable.innerHTML += `<tr><td>${log.name}</td><td>${log.category}</td><td class="text-green">+${log.qty} ${log.uom}</td><td>${log.date}</td></tr>`;
+            });
+
+            // Update Dashboard Stock-Out Logs
+            let dashOutTable = document.getElementById('dash-stock-out-list');
+            dashOutTable.innerHTML = '';
+            stockOutLogs.slice(-5).reverse().forEach(log => {
+                dashOutTable.innerHTML += `<tr><td>${log.name}</td><td class="text-red">-${log.qty} ${log.uom}</td><td>${log.site}</td><td>${log.date}</td></tr>`;
+            });
+
+            // Update Settings & Report Tables
+            renderSettingsTable();
+            
+            let reportTable = document.getElementById('report-inventory-list');
+            reportTable.innerHTML = '';
+            materials.forEach(m => {
+                let badgeClass = m.currentQty === 0 ? "badge-critical" : (m.currentQty <= m.minAlert ? "badge-low" : "badge-normal");
+                let statusText = m.currentQty === 0 ? "Out of Stock" : (m.currentQty <= m.minAlert ? "Low Stock" : "Normal Stock");
+                reportTable.innerHTML += `<tr>
+                    <td><b>${m.name}</b></td>
+                    <td>${m.category}</td>
+                    <td>${m.currentQty} ${m.uom}</td>
+                    <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                </tr>`;
+            });
+        }
+
+        // EDIT MATERIAL
+        function editMaterial(index) {
+            let m = materials[index];
+            let oldName = m.name;
+
+            let newName = prompt("Edit Material Name:", m.name);
+            if (newName === null || newName.trim() === "") return;
+
+            let newCategory = prompt("Edit Category:", m.category);
+            if (newCategory === null || newCategory.trim() === "") return;
+
+            let newUom = prompt("Edit Unit of Measure (UOM):", m.uom);
+            if (newUom === null || newUom.trim() === "") return;
+
+            let newMinAlert = prompt("Edit Minimum Stock Alert Level:", m.minAlert);
+            if (newMinAlert === null || isNaN(newMinAlert)) return;
+
+            // Update Name in Logs as well
+            stockInLogs.forEach(l => { if (l.name === oldName) l.name = newName.trim(); });
+            stockOutLogs.forEach(l => { if (l.name === oldName) l.name = newName.trim(); });
+
+            materials[index].name = newName.trim();
+            materials[index].category = newCategory.trim();
+            materials[index].uom = newUom.trim();
+            materials[index].minAlert = parseInt(newMinAlert);
+
+            alert("Material details updated!");
+            updateAllViews();
+        }
+
+        // DELETE MATERIAL & CLEANUP LOGS
+        function deleteMaterial(index) {
+            let deletedName = materials[index].name;
+            let confirmDelete = confirm(`Are you sure you want to delete "${deletedName}"? This will also remove its transaction history.`);
+            if (confirmDelete) {
+                materials.splice(index, 1);
+                
+                // Filter out logs associated with the deleted material
+                stockInLogs = stockInLogs.filter(log => log.name.toLowerCase() !== deletedName.toLowerCase());
+                stockOutLogs = stockOutLogs.filter(log => log.name.toLowerCase() !== deletedName.toLowerCase());
+
+                alert(`"${deletedName}" and its history have been completely removed!`);
+                updateAllViews();
+            }
+        }
+
+        // RESET ALL DATA
+        function clearAllData() {
+            if (confirm("Are you sure you want to wipe out ALL materials and transaction logs?")) {
+                localStorage.clear();
+                materials = [];
+                stockInLogs = [];
+                stockOutLogs = [];
+                alert("System data has been completely cleared!");
+                updateAllViews();
+            }
+        }
+
+        // RENDER SETTINGS TABLE
+        function renderSettingsTable(filter = '') {
+            let settingsTable = document.getElementById('settings-inventory-list');
+            settingsTable.innerHTML = '';
+
+            let filtered = materials.filter(m => 
+                m.name.toLowerCase().includes(filter.toLowerCase()) || 
+                m.category.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            filtered.forEach(m => {
+                let badgeClass = m.currentQty === 0 ? "badge-critical" : (m.currentQty <= m.minAlert ? "badge-low" : "badge-normal");
+                let statusText = m.currentQty === 0 ? "Out of Stock" : (m.currentQty <= m.minAlert ? "Low Stock" : "Normal Stock");
+
+                settingsTable.innerHTML += `<tr>
+                    <td><b>${m.name}</b></td>
+                    <td>${m.category}</td>
+                    <td>${m.currentQty} ${m.uom}</td>
+                    <td>${m.minAlert} ${m.uom}</td>
+                    <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                </tr>`;
+            });
+        }
+
+        function filterSettingsTable() {
+            let query = document.getElementById('settings-search').value;
+            renderSettingsTable(query);
+        }
+
+        // ADD MATERIAL
+        document.getElementById('add-material-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let newMat = {
+                name: document.getElementById('mat-name').value.trim(),
+                category: document.getElementById('mat-category').value,
+                uom: document.getElementById('mat-uom').value.trim(),
+                currentQty: 0,
+                minAlert: parseInt(document.getElementById('mat-alert').value)
+            };
+            materials.push(newMat);
+            alert('Material Added!');
+            this.reset();
+            updateAllViews();
+        });
+
+        // STOCK IN
+        document.getElementById('stock-in-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let searchValue = document.getElementById('stock-in-search').value.trim();
+            let qty = parseInt(document.getElementById('stock-in-qty').value);
+            let mat = materials.find(m => m.name.toLowerCase() === searchValue.toLowerCase());
+
+            if (!mat) {
+                alert('Material not found! Please select a valid material.');
+                return;
+            }
+
+            mat.currentQty += qty;
+            stockInLogs.push({
+                name: mat.name,
+                category: mat.category,
+                qty: qty,
+                uom: mat.uom,
+                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            });
+
+            alert(`Stock In Recorded! Added ${qty} ${mat.uom} to ${mat.name}.`);
+            this.reset();
+            updateAllViews();
+        });
+
+        // STOCK OUT
+        document.getElementById('stock-out-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let searchValue = document.getElementById('stock-out-search').value.trim();
+            let qty = parseInt(document.getElementById('stock-out-qty').value);
+            let site = document.getElementById('stock-out-site').value;
+            let mat = materials.find(m => m.name.toLowerCase() === searchValue.toLowerCase());
+
+            if (!mat) {
+                alert('Material not found! Please select a valid material.');
+                return;
+            }
+
+            if (qty > mat.currentQty) {
+                alert(`Insufficient Stock! Available quantity for ${mat.name} is only ${mat.currentQty} ${mat.uom}.`);
+                return;
+            }
+
+            mat.currentQty -= qty;
+            stockOutLogs.push({
+                name: mat.name,
+                qty: qty,
+                uom: mat.uom,
+                site: site,
+                date: "Today " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+
+            alert(`Stock Out Recorded! Issued ${qty} ${mat.uom} of ${mat.name} to ${site}.`);
+            this.reset();
+            updateAllViews();
+        });
+
+        // INITIAL LOAD
+        updateAllViews();
+    </script>
+</body>
+</html>
