@@ -30,9 +30,12 @@
         th { background-color: #f8fafc; color: #475569; font-size: 11px; padding: 10px; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
         td { padding: 10px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .badge-normal { background-color: #dcfce7; color: #166534; }
-        .badge-low { background-color: #fef9c3; color: #854d0e; }
-        .badge-critical { background-color: #fee2e2; color: #991b1b; }
+        
+        /* COLOR BADGES BASED ON YOUR SPECIFICATIONS */
+        .badge-green { background-color: #dcfce7; color: #166534; }
+        .badge-yellow { background-color: #fef9c3; color: #854d0e; }
+        .badge-red { background-color: #fee2e2; color: #991b1b; }
+
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
         .form-group label { font-size: 12px; font-weight: 600; color: #475569; }
@@ -88,11 +91,11 @@
                     <div class="card-value" id="total-materials-card">0</div>
                 </div>
                 <div class="card">
-                    <div class="card-title">LOW STOCKS</div>
+                    <div class="card-title">LOW STOCKS (&lt; 50)</div>
                     <div class="card-value" id="low-stocks-card" style="color: #d97706;">0</div>
                 </div>
                 <div class="card">
-                    <div class="card-title">OUT OF STOCKS</div>
+                    <div class="card-title">CRITICAL STOCKS (&le; 20)</div>
                     <div class="card-value" id="out-stocks-card" style="color: #dc2626;">0</div>
                 </div>
             </div>
@@ -137,6 +140,8 @@
                                 <option>Structural</option>
                                 <option>Plumbing</option>
                                 <option>Finishing</option>
+                                <option>Ceiling/Partition</option>
+                                 <option>Modular</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -145,7 +150,7 @@
                         </div>
                         <div class="form-group">
                             <label>Minimum Stock Alert Level</label>
-                            <input type="number" id="mat-alert" class="form-control" placeholder="e.g. 5" required>
+                            <input type="number" id="mat-alert" class="form-control" placeholder="e.g. 20" required>
                         </div>
                     </div>
                     <button type="submit" class="btn">Save New Material</button>
@@ -264,7 +269,6 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        // Initialize empty or read existing storage
         let materials = JSON.parse(localStorage.getItem('materials_data')) || [];
         let stockInLogs = JSON.parse(localStorage.getItem('stock_in_logs')) || [];
         let stockOutLogs = JSON.parse(localStorage.getItem('stock_out_logs')) || [];
@@ -282,33 +286,43 @@
             element.classList.add('active');
         }
 
+        // HELPER FUNCTION FOR CUSTOM STATUS ALERTS
+        function getStatusAlert(qty) {
+            if (qty >= 50) {
+                return { badgeClass: 'badge-green', text: 'HIGH STOCK' };
+            } else if (qty < 50 && qty > 20) {
+                return { badgeClass: 'badge-yellow', text: 'LOW STOCK' };
+            } else {
+                return { badgeClass: 'badge-red', text: 'CRITICAL STOCK' };
+            }
+        }
+
         function updateAllViews() {
             saveData();
 
-            // Update Datalists
             let inDatalist = document.getElementById('materials-list-in');
             let outDatalist = document.getElementById('materials-list-out');
             inDatalist.innerHTML = '';
             outDatalist.innerHTML = '';
 
             let lowCount = 0;
-            let outCount = 0;
+            let criticalCount = 0;
 
             materials.forEach((m) => {
                 let optionText = `${m.name} [Available: ${m.currentQty} ${m.uom}]`;
                 inDatalist.innerHTML += `<option value="${m.name}">${optionText}</option>`;
                 outDatalist.innerHTML += `<option value="${m.name}">${optionText}</option>`;
 
-                if (m.currentQty === 0) outCount++;
-                else if (m.currentQty <= m.minAlert) lowCount++;
+                if (m.currentQty <= 20) criticalCount++;
+                else if (m.currentQty < 50) lowCount++;
             });
 
             // Update Cards
             document.getElementById('total-materials-card').innerText = materials.length;
             document.getElementById('low-stocks-card').innerText = lowCount;
-            document.getElementById('out-stocks-card').innerText = outCount;
+            document.getElementById('out-stocks-card').innerText = criticalCount;
 
-            // Update Master List in Add Materials Page
+            // Update Master List
             let addMasterTable = document.getElementById('add-materials-master-list');
             addMasterTable.innerHTML = '';
             materials.forEach((m, index) => {
@@ -324,33 +338,31 @@
                 </tr>`;
             });
 
-            // Update Dashboard Stock-In Logs
+            // Update Dashboard Logs
             let dashInTable = document.getElementById('dash-stock-in-list');
             dashInTable.innerHTML = '';
             stockInLogs.slice(-5).reverse().forEach(log => {
                 dashInTable.innerHTML += `<tr><td>${log.name}</td><td>${log.category}</td><td class="text-green">+${log.qty} ${log.uom}</td><td>${log.date}</td></tr>`;
             });
 
-            // Update Dashboard Stock-Out Logs
             let dashOutTable = document.getElementById('dash-stock-out-list');
             dashOutTable.innerHTML = '';
             stockOutLogs.slice(-5).reverse().forEach(log => {
                 dashOutTable.innerHTML += `<tr><td>${log.name}</td><td class="text-red">-${log.qty} ${log.uom}</td><td>${log.site}</td><td>${log.date}</td></tr>`;
             });
 
-            // Update Settings & Report Tables
+            // Update Settings & Reports
             renderSettingsTable();
             
             let reportTable = document.getElementById('report-inventory-list');
             reportTable.innerHTML = '';
             materials.forEach(m => {
-                let badgeClass = m.currentQty === 0 ? "badge-critical" : (m.currentQty <= m.minAlert ? "badge-low" : "badge-normal");
-                let statusText = m.currentQty === 0 ? "Out of Stock" : (m.currentQty <= m.minAlert ? "Low Stock" : "Normal Stock");
+                let status = getStatusAlert(m.currentQty);
                 reportTable.innerHTML += `<tr>
                     <td><b>${m.name}</b></td>
                     <td>${m.category}</td>
                     <td>${m.currentQty} ${m.uom}</td>
-                    <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                    <td><span class="badge ${status.badgeClass}">${status.text}</span></td>
                 </tr>`;
             });
         }
@@ -372,7 +384,6 @@
             let newMinAlert = prompt("Edit Minimum Stock Alert Level:", m.minAlert);
             if (newMinAlert === null || isNaN(newMinAlert)) return;
 
-            // Update Name in Logs as well
             stockInLogs.forEach(l => { if (l.name === oldName) l.name = newName.trim(); });
             stockOutLogs.forEach(l => { if (l.name === oldName) l.name = newName.trim(); });
 
@@ -385,30 +396,27 @@
             updateAllViews();
         }
 
-        // DELETE MATERIAL & CLEANUP LOGS
+        // DELETE MATERIAL
         function deleteMaterial(index) {
             let deletedName = materials[index].name;
-            let confirmDelete = confirm(`Are you sure you want to delete "${deletedName}"? This will also remove its transaction history.`);
-            if (confirmDelete) {
+            if (confirm(`Are you sure you want to delete "${deletedName}"?`)) {
                 materials.splice(index, 1);
-                
-                // Filter out logs associated with the deleted material
                 stockInLogs = stockInLogs.filter(log => log.name.toLowerCase() !== deletedName.toLowerCase());
                 stockOutLogs = stockOutLogs.filter(log => log.name.toLowerCase() !== deletedName.toLowerCase());
 
-                alert(`"${deletedName}" and its history have been completely removed!`);
+                alert(`"${deletedName}" removed!`);
                 updateAllViews();
             }
         }
 
         // RESET ALL DATA
         function clearAllData() {
-            if (confirm("Are you sure you want to wipe out ALL materials and transaction logs?")) {
+            if (confirm("Are you sure you want to wipe out ALL materials and logs?")) {
                 localStorage.clear();
                 materials = [];
                 stockInLogs = [];
                 stockOutLogs = [];
-                alert("System data has been completely cleared!");
+                alert("System reset complete!");
                 updateAllViews();
             }
         }
@@ -424,15 +432,14 @@
             );
 
             filtered.forEach(m => {
-                let badgeClass = m.currentQty === 0 ? "badge-critical" : (m.currentQty <= m.minAlert ? "badge-low" : "badge-normal");
-                let statusText = m.currentQty === 0 ? "Out of Stock" : (m.currentQty <= m.minAlert ? "Low Stock" : "Normal Stock");
+                let status = getStatusAlert(m.currentQty);
 
                 settingsTable.innerHTML += `<tr>
                     <td><b>${m.name}</b></td>
                     <td>${m.category}</td>
                     <td>${m.currentQty} ${m.uom}</td>
                     <td>${m.minAlert} ${m.uom}</td>
-                    <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                    <td><span class="badge ${status.badgeClass}">${status.text}</span></td>
                 </tr>`;
             });
         }
@@ -466,7 +473,7 @@
             let mat = materials.find(m => m.name.toLowerCase() === searchValue.toLowerCase());
 
             if (!mat) {
-                alert('Material not found! Please select a valid material.');
+                alert('Material not found!');
                 return;
             }
 
@@ -493,7 +500,7 @@
             let mat = materials.find(m => m.name.toLowerCase() === searchValue.toLowerCase());
 
             if (!mat) {
-                alert('Material not found! Please select a valid material.');
+                alert('Material not found!');
                 return;
             }
 
